@@ -190,6 +190,16 @@ crossEC/
 
 **政策库（千条以上）**：启动时若 `data/legal_policies_expanded.json` 不存在会自动生成，无需手动执行。需重新生成时可运行 `python scripts/generate_expanded_policies.py`。
 
+**上传 GitHub**：本地已初始化 Git 并完成首次提交。在 GitHub 新建仓库后执行：
+
+```bash
+git remote add origin https://github.com/你的用户名/仓库名.git
+git branch -M main
+git push -u origin main
+```
+
+注意：`.env`、`data/crawler.db`、`vendor/` 已忽略，不会推送；克隆后需复制 `.env.example` 为 `.env` 并填写 Key。
+
 ---
 
 ## 环境变量与 API Key
