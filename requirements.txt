@@ -1,0 +1,29 @@
+# CPG-Hub: 跨境电商政策与全球商品集成平台
+# Python 3.10+
+
+# Web 框架
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# 配置与环境变量
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# HTTP 客户端
+httpx>=0.26.0
+
+# 数据库 (可选，后续扩展)
+# motor>=3.3.0
+# pymongo>=4.6.0
+
+# 海外电商数据采集
+# omkarcloud/amazon-scraper: REST API
+# pyktok: TikTok（可选）
+# pyktok>=0.0.31
+
+# LLM 调用 (百度千帆 / OpenAI)
+openai>=1.12.0
+
+# 工具
+python-multipart>=0.0.6

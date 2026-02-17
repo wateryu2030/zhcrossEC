@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>CPG-Hub | 跨境电商选品平台</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="integration-banner">
+        <span class="badge-openclaw">OpenClaw</span>
+        <span class="badge-baidu">百度优选 Skill</span>
+      </div>
+      <h1 class="logo">CPG-Hub</h1>
+      <p class="tagline">跨境电商政策与全球商品集成 · 情报错位竞争</p>
+      <div class="stats-strip" id="stats-strip"></div>
+      <nav class="nav">
+        <button class="nav-btn active" data-tab="overview">📌 概览</button>
+        <button class="nav-btn" data-tab="analyze">📊 选品</button>
+        <button class="nav-btn" data-tab="trending">🔥 热销</button>
+        <button class="nav-btn" data-tab="policies">📋 政策</button>
+        <button class="nav-btn" data-tab="media">📱 媒体</button>
+      </nav>
+    </header>
+
+    <main class="main">
+      <!-- 今日概览 -->
+      <section class="panel active" id="panel-overview">
+        <div class="card card-overview">
+          <h2><span class="icon">📌</span> 今日概览</h2>
+          <p class="hint">热门类目、行业资讯、选品速览 · 一屏掌握</p>
+          <div class="overview-quick-nav">
+            <button class="quick-nav-btn" data-tab="analyze">📊 选品分析</button>
+            <button class="quick-nav-btn" data-tab="trending">🔥 热销趋势</button>
+            <button class="quick-nav-btn" data-tab="policies">📋 政策动态</button>
+          </div>
+          <div id="overview-hot-categories" class="overview-section"></div>
+          <div id="overview-news" class="overview-section"></div>
+          <div id="overview-quick-analyze" class="overview-section"></div>
+        </div>
+      </section>
+
+      <!-- 选品分析 -->
+      <section class="panel" id="panel-analyze">
+        <div class="card card-analyze">
+          <h2><span class="icon">📊</span> Amazon 链接分析</h2>
+          <p class="hint">输入 Amazon 商品链接或 ASIN，百度优选自动寻找国内同款并对比差价</p>
+          <div class="input-group">
+            <input type="text" id="amazon-input" placeholder="https://amazon.com/dp/xxx 或 B0XXXXXX" autocomplete="url">
+            <button class="btn btn-primary" id="btn-analyze">分析</button>
+          </div>
+          <div id="analyze-result" class="result-area">
+            <div id="analyze-demo" class="analyze-demo"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 热销趋势 -->
+      <section class="panel" id="panel-trending">
+        <div class="card card-trending">
+          <h2><span class="icon">🔥</span> 海外热销 + 百度优选同款</h2>
+          <p class="hint">Amazon 热销 → 百度优选检索国内货源 → 差价对比</p>
+          <button class="btn btn-secondary" id="btn-load-trending">刷新数据</button>
+          <div id="trending-result" class="result-area"></div>
+        </div>
+      </section>
+
+      <!-- 政策动态 · 法务自用知识库 -->
+      <section class="panel" id="panel-policies">
+        <div class="card card-policies">
+          <h2><span class="icon">📋</span> 跨境政策 · 法务自用知识库</h2>
+          <p class="hint">按合规场景、目标国、风险等级检索；发布机构与原文可溯源；已废止政策可勾选显示。本模块独立于选品/百度。</p>
+          <div class="policy-filters" id="policy-filters"></div>
+          <div class="policy-filters policy-filters--row" id="policy-filters-region"></div>
+          <div class="policy-filters policy-filters--row" id="policy-filters-risk"></div>
+          <div class="policy-filters policy-filters--row" id="policy-filters-region-label"></div>
+          <div class="policy-actions">
+            <label class="policy-check"><input type="checkbox" id="policy-include-repealed" /> 含已废止</label>
+            <button class="btn btn-secondary" id="btn-load-policies">刷新 · 法务政策库（千条+）</button>
+            <button class="btn btn-secondary" id="btn-load-policies-db">从数据库加载（爬虫周更）</button>
+          </div>
+          <div id="policies-result" class="result-area"></div>
+          <div class="policy-insights-section" id="policy-insights-section">
+            <h3>方向与行动建议</h3>
+            <p class="hint">基于政策库与爬虫数据的自动分析，供决策参考</p>
+            <div id="policy-insights-result" class="policy-insights-result"></div>
+          </div>
+          <div class="policy-analysis-section">
+            <h3>各地政策特点 · AI 分析</h3>
+            <p class="hint">选择地区后由 AI 总结该地政策侧重、风险点及与其它地区的差异。</p>
+            <div class="policy-analysis-actions">
+              <label>地区 <select id="policy-analysis-region"></select></label>
+              <button class="btn btn-primary" id="btn-analyze-regions">AI 分析</button>
+            </div>
+            <div id="policy-analysis-result" class="policy-analysis-result"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 媒体热点 -->
+      <section class="panel" id="panel-media">
+        <div class="card card-media">
+          <h2><span class="icon">📱</span> 媒体热点</h2>
+          <p class="hint">抖音、快手、财新、微博等平台与跨境电商相关热点（按日检索入库）· 参考 <a href="https://github.com/wateryu2030/ahotnews" target="_blank" rel="noopener">ahotnews</a></p>
+          <div class="media-actions">
+            <button class="btn btn-secondary" id="btn-load-media">刷新 · 从数据库加载</button>
+            <button class="btn btn-secondary" id="btn-ahotnews-sync" title="按关键词爬取抖音/快手/微博并同步到库">从 ahotnews 同步</button>
+          </div>
+          <div class="media-links-section">
+            <h3>我的媒体链接</h3>
+            <form id="form-add-media-link" class="form-inline">
+              <select id="media-link-platform" required>
+                <option value="douyin">抖音</option>
+                <option value="kuaishou">快手</option>
+                <option value="weibo">微博</option>
+                <option value="caixin">财新</option>
+                <option value="other">其他</option>
+              </select>
+              <input type="url" id="media-link-url" placeholder="链接 URL" required />
+              <input type="text" id="media-link-title" placeholder="标题（可选）" />
+              <button type="submit" class="btn btn-primary">添加</button>
+            </form>
+            <div id="media-links-list" class="media-links-list"></div>
+          </div>
+          <div id="media-result" class="result-area"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>CPG-Hub · 情报错位竞争</p>
+    </footer>
+  </div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
