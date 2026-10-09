@@ -9,6 +9,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# macOS / 编辑器（2026-10-09 补充）
+.DS_Store
+.cursor/
+
 # IDE
 .idea/
 .vscode/

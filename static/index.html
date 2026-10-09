@@ -76,17 +76,31 @@
       <section class="panel" id="panel-policies">
         <div class="card card-policies">
           <h2><span class="icon">📋</span> 跨境政策 · 法务自用知识库</h2>
-          <p class="hint">按合规场景、目标国、风险等级检索；发布机构与原文可溯源；已废止政策可勾选显示。本模块独立于选品/百度。</p>
+          <p class="hint">按合规场景、目标国、风险等级检索；发布机构与原文可溯源。下方「省市/分类/国家」仅对「从数据库加载」生效，分类=合规场景（清关/财税/支付/数据跨境/知识产权/行政处罚/综合）。</p>
           <div class="policy-filters" id="policy-filters"></div>
           <div class="policy-filters policy-filters--row" id="policy-filters-region"></div>
           <div class="policy-filters policy-filters--row" id="policy-filters-risk"></div>
           <div class="policy-filters policy-filters--row" id="policy-filters-region-label"></div>
+          <div class="policy-actions policy-filters--row">
+            <span class="filter-label">省市</span>
+            <select id="policy-db-region" class="policy-db-filter"><option value="">全部</option></select>
+            <span class="filter-label">分类</span>
+            <select id="policy-db-category" class="policy-db-filter"><option value="">全部</option></select>
+            <span class="filter-label">国家</span>
+            <select id="policy-db-country" class="policy-db-filter"><option value="">全部</option></select>
+          </div>
+          <div class="policy-db-region-chips-wrap" id="policy-db-region-chips-wrap" style="display:none;">
+            <span class="filter-label">按省市快速查看</span>
+            <div id="policy-db-region-chips" class="policy-region-chips"></div>
+          </div>
           <div class="policy-actions">
             <label class="policy-check"><input type="checkbox" id="policy-include-repealed" /> 含已废止</label>
             <button class="btn btn-secondary" id="btn-load-policies">刷新 · 法务政策库（千条+）</button>
             <button class="btn btn-secondary" id="btn-load-policies-db">从数据库加载（爬虫周更）</button>
           </div>
           <div id="policies-result" class="result-area"></div>
+          <div id="policy-db-pagination" class="policy-pagination" style="display:none;"></div>
+          <div id="policy-library-pagination" class="policy-pagination" style="display:none;"></div>
           <div class="policy-insights-section" id="policy-insights-section">
             <h3>方向与行动建议</h3>
             <p class="hint">基于政策库与爬虫数据的自动分析，供决策参考</p>

@@ -33,8 +33,10 @@ async def _accumulate_loop() -> None:
     await asyncio.sleep(30)
     while True:
         try:
-            result = await run_accumulate_content()
+            result = await asyncio.wait_for(run_accumulate_content(), timeout=180.0)
             logger.info("scheduler accumulate: %s", result)
+        except asyncio.TimeoutError:
+            logger.warning("accumulate timeout (180s), next run in %d min", interval)
         except Exception as e:
             logger.warning("accumulate error: %s", e)
         await asyncio.sleep(interval * 60)

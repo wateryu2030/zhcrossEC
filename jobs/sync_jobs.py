@@ -31,7 +31,7 @@ ACCUMULATE_KEYWORDS = ["跨境电商 热销", "出口 选品", "海外仓 爆款
 async def run_sync_policies() -> int:
     """同步政策数据，返回新增/更新数量"""
     try:
-        policies = await fetch_policy_updates()
+        policies = await asyncio.wait_for(fetch_policy_updates(), timeout=90.0)
         data = _load_sync_cache()
         existing = {p.get("id") for p in data.get("policies", [])}
         new_count = sum(1 for p in policies if p.get("id") not in existing)
@@ -54,6 +54,9 @@ async def run_sync_policies() -> int:
         _save_sync_cache(data)
         logger.info("sync_policies: %d policies, %d new", len(merged), new_count)
         return len(merged)
+    except asyncio.TimeoutError:
+        logger.warning("sync_policies timeout (90s)")
+        return 0
     except Exception as e:
         logger.warning("sync_policies failed: %s", e)
         return 0
@@ -68,7 +71,9 @@ def _is_mock_trending_item(o: dict) -> bool:
 async def run_sync_trending() -> int:
     """同步热销趋势，调用 Amazon + 百度优选。mock 数据不覆盖现有优质 demo。"""
     try:
-        data = await search_amazon("best seller", sort_by="best_sellers")
+        data = await asyncio.wait_for(
+            search_amazon("best seller", sort_by="best_sellers"), timeout=20.0
+        )
         results = data.get("results", [])[:6]
         if not results:
             return 0
@@ -125,6 +130,9 @@ async def run_sync_trending() -> int:
         _save_sync_cache(sample)
         logger.info("sync_trending: %d items", len(items))
         return len(items)
+    except asyncio.TimeoutError:
+        logger.warning("sync_trending timeout (20s)")
+        return 0
     except Exception as e:
         logger.warning("sync_trending failed: %s", e)
         return 0
@@ -197,6 +205,8 @@ async def run_accumulate_content() -> dict:
             }
             _save_sync_cache(sample)
             logger.info("accumulate_content: +%d from keywords, policies=%d, trending=%d", added, policies_count, trending_count)
+    except asyncio.TimeoutError:
+        logger.warning("run_accumulate_content timeout")
     except Exception as e:
         logger.warning("run_accumulate_content keyword round: %s", e)
     return {"policies": policies_count, "trending": trending_count, "accumulated": True}

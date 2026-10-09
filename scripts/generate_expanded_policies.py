@@ -120,7 +120,7 @@ def generate_one(region: str, scenario: str, index: int, year: int) -> dict:
         "id": f"pol-exp-{index}",
         "title": title,
         "source": _source(region),
-        "url": f"https://www.example.com/policy/{index}",
+        "url": "",
         "publish_date": pub,
         "effective_date": eff,
         "repeal_date": "",

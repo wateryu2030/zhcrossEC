@@ -417,10 +417,19 @@ def load_expanded_policy_library() -> list[dict[str, Any]]:
     return _EXPANDED_CACHE
 
 
+def _is_fake_url(url: str) -> bool:
+    """占位/示例域名（如 example.com）一律视为无效，不展示「查看原文」。"""
+    if not url or not isinstance(url, str):
+        return True
+    u = url.strip().lower()
+    return "example.com" in u or "example.org" in u or "example.net" in u
+
+
 def get_full_policy_library() -> list[dict[str, Any]]:
-    """种子 50 + 扩展库，合计 1000+ 条。"""
+    """种子 50 + 扩展库，合计 1000+ 条。排除 URL 为 example 等占位域名的条目。"""
     expanded = load_expanded_policy_library()
-    return list(LEGAL_POLICY_LIBRARY) + list(expanded)
+    all_policies = list(LEGAL_POLICY_LIBRARY) + list(expanded)
+    return [p for p in all_policies if not _is_fake_url(p.get("url"))]
 
 
 def get_legal_policies(

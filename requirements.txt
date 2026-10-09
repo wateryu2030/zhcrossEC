@@ -13,9 +13,9 @@ pydantic-settings>=2.1.0
 # HTTP 客户端
 httpx>=0.26.0
 
-# 数据库 (可选，后续扩展)
-# motor>=3.3.0
-# pymongo>=4.6.0
+# 数据库：MySQL（政策、媒体、政策分析，MySQL 8 认证需 cryptography）
+PyMySQL>=1.1.0
+cryptography>=41.0.0
 
 # 海外电商数据采集
 # omkarcloud/amazon-scraper: REST API

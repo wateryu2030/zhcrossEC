@@ -1,6 +1,7 @@
 #!/bin/bash
 # CPG-Hub 后台运行（锁屏、关终端后继续工作）
 # 使用 nohup + caffeinate 防止休眠，确保 OpenClaw 与同步任务持续执行
+# 也可用 OpenClaw 控制入口: python3 scripts/openclaw_control.py start
 
 cd "$(dirname "$0")"
 ROOT="$(pwd)"

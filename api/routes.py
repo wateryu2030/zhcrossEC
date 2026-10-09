@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from agents.baidu_agent import search_products as baidu_search_products
@@ -116,7 +117,7 @@ async def get_demo():
     首屏数据：全部来自真实数据（政策库/DB/同步缓存/媒体库），无 example/sample 示范数据。
     """
     from config import settings
-    from crawler.db import list_policies, list_media_hot
+    from crawler.db import list_policies, list_media_hot, count_policies, count_media_hot
 
     cache = _load_sync_cache()
     warnings: list[str] = []
@@ -138,20 +139,30 @@ async def get_demo():
     if not policies_real:
         policies_real = [_policy_row_to_demo(p) for p in POLICY_LIBRARY[:50]]
 
-    # 媒体数量（真实）
-    media_count = 0
-    try:
-        media_count = len(list_media_hot(limit=50))
-    except Exception:
-        pass
-
-    # 统计：政策数为库总量，其余来自真实
+    # 统计：政策数、媒体数优先用数据库真实条数（与首屏「不更新」问题直接对应）
     stats = cache.get("stats", {}) or {}
     try:
-        stats["policy_count"] = len(get_full_policy_library())
+        db_policy_count = count_policies()
+        stats["policy_count"] = db_policy_count
+        if db_policy_count == 0:
+            try:
+                library_count = len(get_full_policy_library())
+                if library_count > 0:
+                    stats["policy_count"] = library_count
+            except Exception:
+                pass
     except Exception:
-        stats["policy_count"] = len(policies_real)
-    stats["media_count"] = media_count
+        try:
+            stats["policy_count"] = len(get_full_policy_library())
+        except Exception:
+            stats["policy_count"] = len(policies_real)
+    try:
+        stats["media_count"] = count_media_hot()
+    except Exception:
+        try:
+            stats["media_count"] = len(list_media_hot(limit=500))
+        except Exception:
+            stats["media_count"] = 0
     stats.setdefault("updated_at", "真实环境")
 
     # 热销 / 热门类目 / 行业资讯：仅来自同步缓存（真实）
@@ -175,20 +186,76 @@ async def get_demo():
     if not analyze_samples and cache.get("analyze_sample"):
         analyze_samples = [cache["analyze_sample"]]
 
-    # 配置提示
+    # 配置提示（仅对未配置项提示）
     if not settings.omkar_cloud_api_key:
         warnings.append("可选：配置 OMKAR_CLOUD_API_KEY 可启用海外热销与选品详情（.env）")
     if not (settings.zhipu_api_key or settings.baidu_api_key or settings.openai_api_key):
         warnings.append("未配置 LLM：选品分析与政策 AI 将不可用，请配置 .env")
     if not (settings.perplexity_api_key or settings.openrouter_api_key):
         warnings.append("未配置 PERPLEXITY/OPENROUTER：政策自动搜索不可用，当前为政策库与爬虫")
+    if not settings.openclaw_api_key:
+        warnings.append("可选：配置 OPENCLAW_API_KEY 可启用百度优选（商品检索、比价）")
+
+    # 已配置摘要（真实数据，供前端展示“已配置：xxx”）
+    configured_list = []
+    if settings.omkar_cloud_api_key:
+        configured_list.append("OMKAR_CLOUD_API_KEY")
+    if settings.perplexity_api_key or settings.openrouter_api_key:
+        configured_list.append("政策自动搜索（OpenRouter/Perplexity）")
+    if settings.zhipu_api_key or settings.baidu_api_key or settings.openai_api_key:
+        configured_list.append("LLM（智谱/百度/OpenAI）")
+    if settings.openclaw_api_key:
+        configured_list.append("OPENCLAW_API_KEY")
+
+    # 完善配置：仅展示未配置项及对应链接
+    config_links = []
+    if not settings.omkar_cloud_api_key:
+        config_links.append({
+            "id": "omkar",
+            "name": "OMKAR_CLOUD_API_KEY",
+            "desc": "海外热销与选品详情（Amazon 数据，5000 次/月免费）",
+            "signup_url": "https://omkar.cloud/auth/sign-up",
+            "key_url": "https://omkar.cloud/api-key",
+        })
+    if not (settings.perplexity_api_key or settings.openrouter_api_key):
+        config_links.append({
+            "id": "policy_search",
+            "name": "政策自动搜索（OpenRouter 或 Perplexity 二选一）",
+            "desc": "Perplexity 全网检索政策与热点",
+            "links": [
+                {"label": "OpenRouter 注册", "url": "https://openrouter.ai/sign-up"},
+                {"label": "OpenRouter 获取 Key", "url": "https://openrouter.ai/keys"},
+                {"label": "Perplexity 获取 Key", "url": "https://perplexity.ai/account/api"},
+            ],
+        })
+    if not (settings.zhipu_api_key or settings.baidu_api_key or settings.openai_api_key):
+        config_links.append({
+            "id": "llm",
+            "name": "LLM（选品分析与政策 AI）",
+            "desc": "智谱 / 百度千帆 / OpenAI 任选其一",
+            "links": [
+                {"label": "智谱清言", "url": "https://open.bigmodel.cn/"},
+                {"label": "百度千帆", "url": "https://console.bce.baidu.com/"},
+                {"label": "OpenAI", "url": "https://platform.openai.com/api-keys"},
+            ],
+        })
+    if not settings.openclaw_api_key:
+        config_links.append({
+            "id": "openclaw",
+            "name": "OPENCLAW_API_KEY",
+            "desc": "百度优选 Skill（商品检索、比价）",
+            "signup_url": "https://www.clawhub.com/",
+            "key_url": "https://www.clawhub.com/",
+        })
 
     data_source = "real" if (policies_real or trending or hot_categories or industry_news) else "mixed" if warnings else "real"
 
-    return {
+    payload = {
         "source": "CPG-Hub 真实数据",
         "data_source": data_source,
         "warnings": warnings,
+        "config_links": config_links,
+        "configured": configured_list,
         "stats": stats,
         "hot_categories": hot_categories,
         "industry_news": industry_news,
@@ -197,6 +264,7 @@ async def get_demo():
         "analyze_sample": analyze_samples[0] if analyze_samples else {},
         "analyze_samples": analyze_samples,
     }
+    return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
 
 
 def _extract_asin(url: str) -> str:
@@ -257,12 +325,12 @@ async def get_policies(
     region_label: str | None = None,
     risk_level: str | None = None,
     include_repealed: bool = False,
-    limit: int = 300,
+    limit: int = 30,
+    offset: int = 0,
 ):
-    """法务自用政策列表：合规场景+目标国+各地+风险等级，千条库检索。返回 total_count 供前端展示「共 N 条」。"""
+    """法务自用政策列表：合规场景+目标国+各地+风险等级，千条库检索。支持分页，limit 默认 30，offset 从 0 开始。"""
     try:
         categories = await get_policy_categories()
-        # 先取足量以得到匹配总数，再截取当前页
         all_matching = get_legal_policies(
             scenario=scenario,
             target_region=target_region,
@@ -272,7 +340,8 @@ async def get_policies(
             limit=10000,
         )
         total_count = len(all_matching)
-        policies = all_matching[:limit]
+        offset = max(0, offset)
+        policies = all_matching[offset : offset + limit]
         out = []
         for p in policies:
             content = (p.get("content") or p.get("title") or "")[:400]
@@ -301,17 +370,44 @@ async def get_policies(
         return {
             "policies": out,
             "total_count": total_count,
+            "limit": limit,
+            "offset": offset,
             "categories": categories,
             "target_regions": TARGET_REGIONS,
             "region_labels": REGION_LABELS,
         }
     except Exception as e:
-        return {"policies": [], "total_count": 0, "categories": [], "target_regions": [], "region_labels": [], "error": str(e)}
+        return {"policies": [], "total_count": 0, "limit": limit, "offset": 0, "categories": [], "target_regions": [], "region_labels": [], "error": str(e)}
 
 
 class AnalyzeRegionsRequest(BaseModel):
     """各地政策特点分析请求"""
     region: str = "全部"  # 全部 | 全国 | 杭州 | 广州 | ... 欧盟 | 美国
+
+
+class PolicyInterpretRequest(BaseModel):
+    """单条政策解读请求"""
+    title: str = ""
+    snippet: str = ""
+
+
+@router.post("/policies/interpret")
+async def interpret_policy(body: PolicyInterpretRequest):
+    """对单条政策做一句话解读：面向跨境电商卖家的影响与建议。"""
+    if not (body.title or body.snippet):
+        return {"interpretation": "", "error": "请提供政策标题或摘要"}
+    try:
+        prompt = f"""你是一位跨境电商合规专家。请用 1–2 句话解读下面这条政策，说明对跨境卖家的实际影响或建议（不要复述原文）。
+
+【政策标题】{body.title[:300]}
+【摘要】{body.snippet[:500]}
+
+直接输出解读内容，不要加「解读：」等前缀。"""
+        resp = await chat_completion([{"role": "user", "content": prompt}])
+        interpretation = (resp or "").strip()[:600]
+        return {"interpretation": interpretation}
+    except Exception as e:
+        return {"interpretation": "", "error": str(e)}
 
 
 @router.post("/policies/analyze-regions")
@@ -413,12 +509,46 @@ async def trigger_sync(mode: str = "all"):
 # ---------- 爬虫：政府政策入库 + 媒体热点 ----------
 
 @router.get("/policies/db")
-async def get_policies_from_db(region: str | None = None, limit: int = 100):
-    """从数据库读取政府政策（爬虫采集，周更）"""
+async def get_policies_from_db(
+    region: str | None = None,
+    category: str | None = None,
+    country: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
+):
+    """从数据库读取政府政策（爬虫采集+丝路电商伙伴国），支持按省市/分类/国家筛选与分页。limit 默认 20，offset 从 0 开始。"""
     try:
-        from crawler.db import list_policies
-        rows = list_policies(limit=limit, region=region)
-        return {"policies": rows, "source": "crawler_db"}
+        from crawler.db import (
+            list_policies,
+            list_policy_regions,
+            list_policy_categories,
+            list_policy_countries,
+            get_policy_latest_crawled_at,
+            count_policies_filtered,
+        )
+        total_count = count_policies_filtered(region=region or None, category=category or None, country=country or None)
+        rows = list_policies(
+            limit=min(limit, 200),
+            offset=max(0, offset),
+            region=region or None,
+            category=category or None,
+            country=country or None,
+        )
+        regions = list_policy_regions()
+        categories = list_policy_categories()
+        countries = list_policy_countries()
+        latest_crawled = get_policy_latest_crawled_at()
+        return {
+            "policies": rows,
+            "total_count": total_count,
+            "limit": min(limit, 200),
+            "offset": max(0, offset),
+            "source": "crawler_db",
+            "regions": regions,
+            "categories": categories,
+            "countries": countries,
+            "latest_crawled_at": latest_crawled,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

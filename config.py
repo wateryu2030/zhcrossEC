@@ -66,7 +66,14 @@ class Settings(BaseSettings):
     google_places_api_key: str = Field(default="", env="GOOGLE_PLACES_API_KEY")
     perplexity_api_key: str = Field(default="", env="PERPLEXITY_API_KEY")
 
-    # MongoDB
+    # MySQL（政策、媒体热点、政策分析等主数据）
+    mysql_host: str = Field(default="127.0.0.1", env="MYSQL_HOST")
+    mysql_port: int = Field(default=3306, env="MYSQL_PORT")
+    mysql_user: str = Field(default="root", env="MYSQL_USER")
+    mysql_password: str = Field(default="", env="MYSQL_PASSWORD")
+    mysql_database: str = Field(default="cpg_hub", env="MYSQL_DATABASE")
+
+    # MongoDB（可选，当前未使用）
     mongodb_uri: str = Field(default="", env="MONGODB_URI")
 
     # 海外数据：omkarcloud/amazon-scraper, ScrapingAnt, Apify
@@ -99,21 +106,46 @@ class Settings(BaseSettings):
     # 媒体链接存储（抖音/快手/财新/微博等），JSON 文件路径
     media_links_file: str = Field(default="data/media_links.json", env="MEDIA_LINKS_FILE")
 
+    # 飞书通知（新政策时通知指定用户，如 余为军）
+    feishu_app_id: str = Field(default="", env="FEISHU_APP_ID")
+    feishu_app_secret: str = Field(default="", env="FEISHU_APP_SECRET")
+    feishu_notify_open_id: str = Field(default="", env="FEISHU_NOTIFY_OPEN_ID")
+
+    # 企业微信通知（与飞书并列，新政策/政策分析可同时推送）
+    wecom_corp_id: str = Field(default="", env="WECOM_CORP_ID")
+    wecom_agent_id: str = Field(default="", env="WECOM_AGENT_ID")
+    wecom_agent_secret: str = Field(default="", env="WECOM_AGENT_SECRET")
+    wecom_to_user: str = Field(default="@all", env="WECOM_TO_USER")
+
 
 def _apply_openclaw_fallbacks(settings: Settings) -> Settings:
     """用 ~/.openclaw/openclaw.json 补充未设置的 Key。"""
     oc = _load_openclaw_json()
     updates: dict = {}
+    # OpenClaw/ClawHub 百度优选 API Key（skills.entries.baidu-preferred 或 baidu_preferred）
+    if not settings.openclaw_api_key:
+        for name in ("baidu-preferred", "baidu_preferred"):
+            ent = oc.get("skills", {}).get("entries", {}).get(name, {})  # 支持键名 baidu_preferred
+            if isinstance(ent, dict) and ent.get("apiKey"):
+                updates["openclaw_api_key"] = ent.get("apiKey")
+                break
     # skills.entries.goplaces / local-places 的 apiKey
     for name in ("goplaces", "local-places"):
         if key := oc.get("skills", {}).get("entries", {}).get(name, {}).get("apiKey"):
             if not settings.google_places_api_key:
                 updates["google_places_api_key"] = key
             break
-    # tools.web.search.perplexity
+    # tools.web.search.perplexity / OpenRouter（政策全网搜索、热点新闻）
     if key := oc.get("tools", {}).get("web", {}).get("search", {}).get("perplexity", {}).get("apiKey"):
         if not settings.perplexity_api_key:
             updates["perplexity_api_key"] = key
+    # models.providers 中 openrouter 的 apiKey（用于 Perplexity 政策搜索）
+    if not settings.openrouter_api_key:
+        for pname, pcfg in oc.get("models", {}).get("providers", {}).items():
+            if "openrouter" in str(pcfg.get("baseUrl", "")).lower():
+                if key := pcfg.get("apiKey"):
+                    updates["openrouter_api_key"] = key
+                break
     # openai-image-gen / openai-whisper 的 apiKey 可作为 OpenAI 备用
     for name in ("openai-image-gen", "openai-whisper-api"):
         if key := oc.get("skills", {}).get("entries", {}).get(name, {}).get("apiKey"):

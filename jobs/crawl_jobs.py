@@ -19,12 +19,19 @@ WEEKLY_INTERVAL_MINUTES = 7 * 24 * 60
 DAILY_INTERVAL_MINUTES = 24 * 60
 
 
+# 单轮政策爬虫最长 10 分钟，避免卡死
+POLICY_CRAWL_TIMEOUT = 600.0
+
+
 async def run_policy_crawl_weekly() -> int:
     """政府政策爬虫：每周执行一次"""
     try:
-        n = await run_policy_crawl()
+        n = await asyncio.wait_for(run_policy_crawl(), timeout=POLICY_CRAWL_TIMEOUT)
         logger.info("crawl_jobs: policy_crawl_weekly done, count=%d", n)
         return n
+    except asyncio.TimeoutError:
+        logger.warning("policy_crawl_weekly timeout (%ds)", int(POLICY_CRAWL_TIMEOUT))
+        return 0
     except Exception as e:
         logger.warning("policy_crawl_weekly error: %s", e)
         return 0
@@ -42,8 +49,8 @@ async def run_media_crawl_daily() -> int:
 
 
 async def scheduler_weekly_loop() -> None:
-    """周任务循环：启动后 2 分钟执行首次，之后每 7 天一次"""
-    await asyncio.sleep(2 * 60)
+    """周任务循环：启动后 30 秒执行首次（快速启动进化），之后每 7 天一次"""
+    await asyncio.sleep(30)
     while True:
         try:
             await run_policy_crawl_weekly()
@@ -53,8 +60,8 @@ async def scheduler_weekly_loop() -> None:
 
 
 async def scheduler_daily_loop() -> None:
-    """日任务循环：启动后 5 分钟执行首次，之后每 24 小时一次"""
-    await asyncio.sleep(5 * 60)
+    """日任务循环：启动后 1 分钟执行首次（快速采集热点），之后每 24 小时一次"""
+    await asyncio.sleep(60)
     while True:
         try:
             await run_media_crawl_daily()
